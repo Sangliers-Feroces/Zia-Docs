@@ -221,7 +221,7 @@ public:
 	* @param const std::string &key: the key of the parameter to set. Ex: `"content-type"`
 	* @param const std::string &value: the value of the parameter to set. Ex: `"application/json"`
 	*/
-	virtual void setHeader(const std::string &key, const std::string &value) const = 0;
+	virtual void setHeader(const std::string &key, const std::string &value) = 0;
 
 	/**
 	* @fn getBody
@@ -235,7 +235,7 @@ public:
 	* Set response body.
 	* @param const std::vector<char> &body: the buffer to set for body data
 	*/
-	virtual void setBody(const std::vector<char> &body) const = 0;
+	virtual void setBody(const std::vector<char> &body) = 0;
 };
 
 /**
@@ -253,7 +253,7 @@ public:
 	* @param const std::string &key: key of context parameter to retrieve
 	* @return const std::any*: the optional context value
 	*/
-	virtual const std::any* get(const std::string &key) = 0;
+	virtual const std::any* get(const std::string &key) const = 0;
 
 	/**
 	* @fn set
@@ -281,7 +281,7 @@ public:
 	* @note If the configuration if read and there was no precedent write to it,
 	* this method returns an empty vector.
 	*/
-	virtual std::vector<char> read(void) const = 0;
+	virtual const std::vector<char>& read(void) const = 0;
 
 	/**
 	* @enum Type
@@ -324,7 +324,7 @@ public:
 	* as JSON, the server can reasonably include this entity's configuration into its own
 	* configuration file. This is recommended to make the configuration easier to modify.
 	*/
-	virtual void write(Type type, const std::vector<char> &data) const = 0;
+	virtual void write(Type type, const std::vector<char> &data) = 0;
 };
 
 /**
