@@ -36,13 +36,11 @@ namespace Zia {
  * pass requests to the handlers.
  * 
  * IV - IHandler
- * The server accepts an arbitrary amount of handlers in conf. Each handler has a priority that can be overriden in conf.
- * When a request is received, the server tries to resolve it by calling IHandler::gotRequest on each handler. On the first
- * non-std::nullopt response, the request is marked as resolved and is written on the default connection.
- * 
- * V - ISniffer
- * The server accepts an arbitrary amount of sniffers in conf. Each sniffer will be called at each received request with
- * the request. Each sniffer will be called at each resolved request with the response and the associated request.
+ * The server accepts an arbitrary amount of handlers in conf.
+ * When a request is received, the server calls all handlers in conf-order.
+ * Each handler can modify the response header and response body. When an handler
+ * sets a code to a non-2** value, this marks the last handler.
+ * After last handler, the response is written to client default connection.
  * 
  */
 
@@ -128,192 +126,50 @@ public:
 };
 
 /**
-* @struct Request
-* Represents a HTTP 1.1 request.
+* @interface IRequest
+* Abstract HTTP request.
 */
-struct Request
+class IRequest
 {
-	/**
-	 * @var data
-	 * Request raw data.
-	 */
-	std::vector<char> data;
+public:
+	virtual ~IRequest(void) = default;
 
 	/**
-	 * @var lines
-	 * The request, line by line.
-	 */
-	std::vector<std::string> lines;
-
-	/**
-	 * @var options
-	 * Request options by key-value. One pair by line when a colon is detected.
-	 * ex: `{{"Connection", "keep-alive"}}`
-	 */
-	std::map<std::string, std::string> options;
-
-	/**
-	* @enum Method
-	* HTTP 1.1 methods.
+	* @fn getMethod
+	* Get HTTP method for the request. Ex: `"GET"`, `"POST"` or `"DELETE"`.
+	* @return const std::string&: the method in caps
 	*/
-	enum class Method {
-		Options,
-		Get,
-		Head,
-		Post,
-		Put,
-		Delete,
-		Trace,
-		Connect,
-		Patch,
-		Link,
-		Unlink
-	};
+	virtual const std::string& getMethod(void) const = 0;
 
 	/**
-	 * @var method
-	 * Request's HTTP method
-	 */
-	Method method;
-
-	/**
-	 * @var url
-	 * Request's url.
-	 * ex: `"/login.html?username=John&pasword=sample_pass"`
-	 */
-	std::string url;
-
-	/**
-	 * @var path
-	 * Request's path, without arguments.
-	 * ex: `"/login.html"`
-	 */
-	std::string path;
-
-	/**
-	 * @var arguments
-	 * Request's arguments, decoded from the url.
-	 * ex: `{{"username", "John"}, {"password", "sample_pass"}}`
-	 */
-	std::map<std::string, std::string> arguments;
-
-	/**
-	 * @var protocol
-	 * Request's protocol.
-	 * ex: `"HTTP/1.1"`
-	 */
-	std::string protocol;
-
-	/**
-	 * @var host
-	 * Request's host.
-	 * ex: `"localhost:5000"`
-	 */
-	std::string host;
-
-	/**
-	 * @var userAgent
-	 * Request's User-Agent.
-	 * ex: `"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gecko/20100101 Firefox/84.0"`
-	 */
-	std::string userAgent;
-
-	/**
-	* @struct MediaRange
-	* An accepted media kind.
+	* @fn getFilename
+	* Get request filename, without any argument. Ex: `"/login.html"`
+	* @return const std::string&: the request filename
 	*/
-	struct MediaRange
-	{
-		/**
-		 * @var type
-		 * For the following, consider [empty] as non-existent 7 characters.
-		 * ex: `"*[empty]/[empty]*"`
-		 */
-		std::string type;
-
-		/**
-		 * @var quality
-		 * `0.0` to `1.0`
-		 */
-		double quality;
-
-		/**
-		 * @var extension
-		 * User-defined media-range data.
-		 */
-		std::map<std::string, std::string> extension;
-	};
+	virtual const std::string& getFilename(void) const = 0;
 
 	/**
-	 * @var accept
-	 * Request's Accept.
-	 */
-	std::vector<MediaRange> accept;
-
-	/**
-	* @struct LanguageRange
-	* An accepted language.
+	* @fn getArgument
+	* Query an argument (key-values trailing in URL). Returns non-null if found, null otherwise.
+	* @param const std::string &name: the name of the argument to query
+	* @return const std::string*: the optional argument
 	*/
-	struct LanguageRange
-	{
-		/**
-		 * @var quality
-		 * ex: `"en-US"`
-		 */
-		std::string language;
-
-		/**
-		 * @var quality
-		 * `0.0` to `1.0`
-		 */
-		double quality;
-	};
+	virtual const std::string* getArgument(const std::string &name) const = 0;
 
 	/**
-	 * @var acceptLanguage
-	 * Request's Accept-Language.
-	 */
-	std::vector<LanguageRange> acceptLanguage;
-
-	/**
-	* @struct Codings
-	* An accepted encoding.
+	* @fn getHeader
+	* Query a header parameter. Returns non-null if found, null otherwise.
+	* @param const std::string &key: the key of the parameter to query. Ex: `"Connection"`
+	* @return const std::string*: the optional parameter
 	*/
-	struct Codings
-	{
-		/**
-		 * @var contentCoding
-		 * ex: `"gzip"`
-		 */
-		std::string contentCoding;
-
-		/**
-		 * @var quality
-		 * `0.0` to `1.0`
-		 */
-		double quality;
-	};
+	virtual const std::string* getHeader(const std::string &key) const = 0;
 
 	/**
-	 * @var acceptEncoding
-	 * Request's Accept-Encoding.
-	 */
-	std::vector<Codings> acceptEncoding;
-
-	/**
-	 * @var closeConnection
-	 * Request's Connection.
-	 * `true` if connection must be closed after response (`options["Connection"] == "close"`).
-	 * `false` if connection must be kept alive.
-	 */
-	bool closeConnection;
-
-	/**
-	 * @var upgradeInsecureRequests
-	 * Request's UpgradeInsecureRequests.
-	 * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Upgrade-Insecure-Requests
-	 */
-	bool upgradeInsecureRequests;
+	* @fn getBody
+	* Query request body. Returns non-null if present, null otherwise.
+	* @return const std::vector<char>*: the optional buffer containing body data
+	*/
+	virtual const std::vector<char>* getBody(void) const = 0;
 
 	/**
 	* @interface IEmitter
@@ -329,18 +185,82 @@ struct Request
 		* Emit a request.
 		* @param const Request &request: the emitted request
 		*/
-		virtual void emit(const Request &request) = 0;
+		virtual void emit(const IRequest &request) = 0;
 	};
 };
 
 /**
-* @struct Response
-* Represents a HTTP 1.1 response.
-* No formatting is required, to allow maximum flexibility.
+* @interface IResponse
+* Abstract HTTP response.
 */
-struct Response
+class IResponse
 {
-	std::vector<char> data;
+public:
+	virtual ~IResponse(void) = default;
+
+	/**
+	* @fn setCode
+	* Set response status. On non-2**, no handlers will be called after current one.
+	* Default code must be 200.
+	* @param size_t code: value of the status code to set
+	*/
+	virtual void setCode(size_t code) = 0;
+
+	/**
+	* @fn getHeader
+	* Query a header parameter. Returns non-null if found, null otherwise.
+	* @param const std::string &key: the key of the parameter to query. Ex: `"Connection"`
+	* @return const std::string*: the optional parameter
+	*/
+	virtual const std::string* getHeader(const std::string &key) const = 0;
+
+	/**
+	* @fn setHeader
+	* Sets a header parameter.
+	* @param const std::string &key: the key of the parameter to set. Ex: `"content-type"`
+	* @param const std::string &value: the value of the parameter to set. Ex: `"application/json"`
+	*/
+	virtual void setHeader(const std::string &key, const std::string &value) const = 0;
+
+	/**
+	* @fn getBody
+	* Query response body. Returns non-null if present, null otherwise.
+	* @return const std::vector<char>*: the optional buffer containing body data
+	*/
+	virtual const std::vector<char>* getBody(void) const = 0;
+
+	/**
+	* @fn setBody
+	* Set response body.
+	* @param const std::vector<char> &body: the buffer to set for body data
+	*/
+	virtual void setBody(const std::vector<char> &body) const = 0;
+};
+
+/**
+* @interface IContext
+* Abstract context values. They are stored by std::string keys, value is a std::any.
+*/
+class IContext
+{
+public:
+	virtual ~IContext(void) = default;
+
+	/**
+	* @fn get
+	* Get context value by key. Returns non-null if present, null otherwise
+	* @param const std::string &key: key of context parameter to retrieve
+	* @return const std::any*: the optional context value
+	*/
+	virtual const std::any* get(const std::string &key) = 0;
+
+	/**
+	* @fn set
+	* Set context value.
+	* @param const std::string &key: key of context parameter to set
+	* @param const const std::any &value: value of context parameter to set
+	*/
+	virtual void set(const std::string &key, const std::any &value) = 0;
 };
 
 /**
@@ -467,18 +387,16 @@ public:
 	* @fn create
 	* Create a parser instance with input, logger and request receiver.
 	* @param IInput &input: the input stream
-	* @param ILogger &logger: the logger associated with the input stream
-	* @param Request::IEmitter &requestEmitter: the emitter where parsed requests should go
+	* @param ILogger &log: the logger associated with the input stream
+	* @param IRequest::IEmitter &requestEmitter: the emitter where parsed requests should go
 	* @return std::unique_ptr<IInstance>: the parser instance associated with such objects.
 	*/
-	virtual std::unique_ptr<IInstance> create(IInput &input, ILogger &logger, Request::IEmitter &requestEmitter) = 0;
-
+	virtual std::unique_ptr<IInstance> create(IInput &input, ILogger &log, IRequest::IEmitter &requestEmitter) = 0;
 };
 
 /**
-* @interface IHandler
-* A module receiving all unresolved requests,
-* the module responds by resolving it or do nothing.
+* @interface IResponse
+* Abstract HTTP handler.
 */
 class IHandler
 {
@@ -486,64 +404,14 @@ public:
 	virtual ~IHandler(void) = default;
 
 	/**
-	* @fn getAccept
-	* Get handler's managed media types.
-	* Order in result vector has no incidence on scanning order.
-	* Each value in vector is a media type (ex: `text/html`) and a priority.
-	* A larger value represents a higher priority.
-	* A smaller value represents a lower priority.
-	* Priority will impact server's handlers scanning order when a request is received.
-	* @return double: the priority of the handler
-	*/
-	virtual std::vector<std::pair<std::string, double>> getAccept(void) const = 0;
-
-	/**
 	* @fn handle
-	* Actual handler function. Called when a request is received and is unresolved.
-	* @param const Request &request: the incoming request
-	* @param ILogger &connectionLogger: the logger object to log stuff
-	* @return std::optional<Response>: the response if the request has been handled,
-	* otherwise std::nullopt is returned.
+	* Handle request.
+	* @param const IRequest &req: the original request
+	* @param IResponse &res: the under-construction response
+	* @param IContext &ctx: the request-associated context
+	* @param ILogger &log: the client-associated logger
 	*/
-	virtual std::optional<Response> handle(const Request &request, ILogger &connectionLogger) = 0;
-};
-
-/**
-* @interface ISniffer
-* Similar to IHandler, except modules of this kind cannot resolve requests.
-* The module can only observe them as they come. This module will receive all
-* incoming requests, regardless of whether they can be resolved or not.
-* Responses will also be independently observed.
-*/
-class ISniffer
-{
-public:
-	virtual ~ISniffer(void) = default;
-
-	/**
-	* @fn gotRequest
-	* Called when a request is received.
-	* @param const Request &request: the incoming request
-	* @param ILogger &connectionLogger: the logger object to log stuff
-	*/
-	virtual void gotRequest(const Request &request, ILogger &connectionLogger) = 0;
-
-	/**
-	* @fn gotResponse
-	* Called when a request is resolved.
-	* @param const Request &request: the incoming request
-	* @param const Response &response: the resolved response to request
-	* @param ILogger &connectionLogger: the logger object to log stuff
-	*/
-	virtual void gotResponse(const Request &request, const Response &response, ILogger &connectionLogger) = 0;
-
-	/**
-	* @fn gotRequestMiss
-	* Called when a request couldn't be handled.
-	* @param const Request &request: the incoming request
-	* @param ILogger &connectionLogger: the logger object to log stuff
-	*/
-	virtual void gotRequestMiss(const Request &request, ILogger &connectionLogger) = 0;
+	virtual void handle(const IRequest &req, IResponse &res, IContext &ctx, ILogger &log) = 0;
 };
 
 }
