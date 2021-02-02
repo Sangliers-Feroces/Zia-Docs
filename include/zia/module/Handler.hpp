@@ -14,11 +14,12 @@ extern "C" {
 * @fn createHandler
 * Create a module instance.
 * @param Zia::IConf &conf: module file unique configuration entity
-* @return std::unique_ptr<Zia::Module::IHandler>: the module instance
+* @return Zia::Module::IHandler*: the module instance, created with new. This
+* object lifetime is managed by the caller and should be deleted before program termination.
 * @note The module should use the given configuration object to store its configuration.
 * It's not recommanded to write the configuration in a file on the filesystem, as this
 * may conflict with other modules and server files.
 */
-std::unique_ptr<Zia::Module::IHandler> createHandler(Zia::IConf &conf);
+Zia::Module::IHandler* createHandler(Zia::IConf &conf);
 
 }
