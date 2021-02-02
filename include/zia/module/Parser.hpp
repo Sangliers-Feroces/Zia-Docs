@@ -20,6 +20,6 @@ extern "C" {
 * It's not recommanded to write the configuration in a file on the filesystem, as this
 * may conflict with other modules and server files.
 */
-Zia::Module::IParser* createParser(Zia::IConf &conf);
+ZIA_EXPORT_SYMBOL Zia::Module::IParser* createParser(Zia::IConf &conf);
 
 }
