@@ -327,6 +327,12 @@ public:
 	virtual void write(Type type, const std::vector<char> &data) = 0;
 };
 
+#if _MSC_VER && !__INTEL_COMPILER
+#define ZIA_EXPORT_SYMBOL __declspec(dllexport)
+#else
+#define ZIA_EXPORT_SYMBOL
+#endif
+
 /**
 * @namespace Module
 * All interfaces for modules.
