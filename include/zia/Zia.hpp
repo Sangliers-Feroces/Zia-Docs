@@ -341,6 +341,7 @@ public:
 namespace Module {
 
 using ILogger = Zia::ILogger;
+using FN_createLogger = Zia::Module::ILogger* (Zia::IConf &conf);
 
 /**
 * @interface IConnectionWrapper
@@ -361,6 +362,7 @@ public:
 	*/
 	virtual std::unique_ptr<IConnection> create(IConnection &connection) = 0;
 };
+using FN_createConnectionWrapper = Zia::Module::IConnectionWrapper* (Zia::IConf &conf);
 
 /**
 * @interface IParser
@@ -400,6 +402,7 @@ public:
 	*/
 	virtual std::unique_ptr<IInstance> create(IInput &input, ILogger &log, IRequest::IEmitter &requestEmitter) = 0;
 };
+using FN_createParser = Zia::Module::IParser* (Zia::IConf &conf);
 
 /**
 * @interface IResponse
@@ -420,6 +423,7 @@ public:
 	*/
 	virtual void handle(const IRequest &req, IResponse &res, IContext &ctx, ILogger &log) = 0;
 };
+using FN_createHandler = Zia::Module::IHandler* (Zia::IConf &conf);
 
 }
 
