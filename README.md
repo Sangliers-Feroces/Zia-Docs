@@ -35,7 +35,8 @@ pass requests to the handlers.
 The server accepts an arbitrary amount of handlers in conf.
 When a request is received, the server calls all handlers in conf-order.
 Each handler can modify the response header and response body. When an handler
-sets a code to a non-2** value (being implicitely set to 200 before first handler), this marks the last handler.
+calls abortPipeline on the request, this marks the last handler and no more handler
+will be called in the handlers pipeline.
 After last handler, the response is written to client default connection.
 
 ## Configuration example

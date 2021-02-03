@@ -40,7 +40,8 @@ namespace Zia {
  * The server accepts an arbitrary amount of handlers in conf.
  * When a request is received, the server calls all handlers in conf-order.
  * Each handler can modify the response header and response body. When an handler
- * sets a code to a non-2** value, this marks the last handler.
+ * calls abortPipeline on the request, this marks the last handler and no more handler
+ * will be called in the handlers pipeline.
  * After last handler, the response is written to client default connection.
  * 
  */
@@ -200,9 +201,22 @@ public:
 	virtual ~IResponse(void) = default;
 
 	/**
-	* @fn setCode
-	* Set response status. On non-2**, no handlers will be called after current one.
+	* @fn abortPipeline
+	* Stop handlers traversal. After current handler, no more handler will be called for current response.
+	*/
+	virtual void abortPipeline(void) = 0;
+
+	/**
+	* @fn getCode
+	* Get response status.
 	* Default code must be 200.
+	* @return size_t: current value of the status code
+	*/
+	virtual size_t getCode(void) const = 0;
+
+	/**
+	* @fn setCode
+	* Set response status.
 	* @param size_t code: value of the status code to set
 	*/
 	virtual void setCode(size_t code) = 0;
