@@ -139,11 +139,25 @@ public:
 	virtual ~IRequest(void) = default;
 
 	/**
+	* @fn getClientIP
+	* Get client IP. Ex: `"192.168.1.90"`.
+	* @return const std::string&: the client IP
+	*/
+	virtual const std::string& getClientIP(void) const = 0;
+
+	/**
 	* @fn getMethod
 	* Get HTTP method for the request. Ex: `"GET"`, `"POST"` or `"DELETE"`.
 	* @return const std::string&: the method in caps
 	*/
 	virtual const std::string& getMethod(void) const = 0;
+
+	/**
+	* @fn getProtocol
+	* Get HTTP protocol for the request. Ex: `"HTTP/1.1"`.
+	* @return const std::string&: the protocol as a string
+	*/
+	virtual const std::string& getProtocol(void) const = 0;
 
 	/**
 	* @fn getFilename
@@ -161,12 +175,33 @@ public:
 	virtual const std::string* getArgument(const std::string &name) const = 0;
 
 	/**
+	* @fn getArgumentsKeys
+	* Get keys for all arguments. Those keys can be used in any call to `getArgument`.
+	* @return std::vector<std::string>: the optional argument
+	*/
+	virtual std::vector<std::string> getArgumentsKeys(void) const = 0;
+
+	/**
+	* @fn getURL
+	* Get full URL, with arguments. Ex: `"/login.html?username=John&password=12345678"`
+	* @return const std::string&: the protocol as a string
+	*/
+	virtual const std::string& getURL(void) const = 0;
+
+	/**
 	* @fn getHeader
 	* Query a header parameter. Returns non-null if found, null otherwise.
 	* @param const std::string &key: the key of the parameter to query. Ex: `"Connection"`
 	* @return const std::string*: the optional parameter
 	*/
 	virtual const std::string* getHeader(const std::string &key) const = 0;
+
+	/**
+	* @fn getHeaderKeys
+	* Query header keys. Those keys can be used in any call to `getHeader`.
+	* @return const std::string*: the header keys
+	*/
+	virtual std::vector<std::string> getHeaderKeys(void) const = 0;
 
 	/**
 	* @fn getBody
