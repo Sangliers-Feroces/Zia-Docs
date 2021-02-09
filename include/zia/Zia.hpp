@@ -127,6 +127,13 @@ class IConnection : public IInputOutput, public ILogger
 {
 public:
 	virtual ~IConnection(void) override = default;
+
+	/**
+	* @fn getRemoteIP
+	* Get the IP of the other end of the connection. Ex: `"192.168.1.90"`.
+	* @return const std::string&: the remote IP
+	*/
+	virtual const std::string& getRemoteIP(void) const = 0;
 };
 
 /**
