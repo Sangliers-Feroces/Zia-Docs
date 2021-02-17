@@ -134,6 +134,13 @@ public:
 	* @return const std::string&: the remote IP
 	*/
 	virtual const std::string& getRemoteIP(void) const = 0;
+	
+	/**
+	* @fn getNativeSocket
+	* Return the native socket file descriptor
+	* @return int: the file descriptor
+	*/
+	virtual int getNativeSocket(void) const = 0;
 };
 
 /**
